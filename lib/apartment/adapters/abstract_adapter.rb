@@ -139,6 +139,30 @@ module Apartment
         end
       end
 
+      def connection_switch!(config)
+        config[:name] = connection_specification_name(config)
+
+        unless Apartment.connection_handler.retrieve_connection_pool(config[:name])
+          Apartment.connection_handler.establish_connection(config)
+        end
+
+        Thread.current[:_apartment_connection_specification_name] = config[:name]
+      end
+
+      def setup_connection_specification_name
+        Apartment.connection_class.connection_specification_name = nil
+        Apartment.connection_class.instance_eval do
+          def connection_specification_name
+            if !defined?(@connection_specification_name) || @connection_specification_name.nil?
+              apartment_spec_name = Thread.current[:_apartment_connection_specification_name]
+              return apartment_spec_name ||
+                (self == ActiveRecord::Base ? "primary" : superclass.connection_specification_name)
+            end
+            @connection_specification_name
+          end
+        end
+      end
+
     protected
 
       def process_excluded_model(excluded_model)
@@ -173,7 +197,7 @@ module Apartment
       def connect_to_new(tenant)
         query_cache_enabled = ActiveRecord::Base.connection.query_cache_enabled
 
-        Apartment.establish_connection multi_tenantify(tenant)
+        connection_switch!(multi_tenantify(tenant))
         Apartment.connection.active?   # call active? to manually check if this connection is valid
 
         Apartment.connection.enable_query_cache! if query_cache_enabled

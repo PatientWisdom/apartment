@@ -15,7 +15,11 @@ module Apartment
     # Default adapter when not using Postgresql Schemas
     class PostgresqlAdapter < AbstractAdapter
 
-    private
+      def connection_specification_name(config)
+        "_apartment_#{config.hash}".to_sym
+      end
+
+      private
 
       def rescue_from
         PG::Error

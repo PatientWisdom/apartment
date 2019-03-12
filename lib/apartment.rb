@@ -16,7 +16,8 @@ module Apartment
     attr_accessor(*ACCESSOR_METHODS)
     attr_writer(*WRITER_METHODS)
 
-    def_delegators :connection_class, :connection, :connection_config, :establish_connection
+    def_delegators :connection_class, :connection, :connection_config, :establish_connection,
+                   :connection_handler
 
     # configure apartment with available options
     def configure
@@ -85,6 +86,7 @@ module Apartment
     # Reset all the config for Apartment
     def reset
       (ACCESSOR_METHODS + WRITER_METHODS).each{|method| remove_instance_variable(:"@#{method}") if instance_variable_defined?(:"@#{method}") }
+      Thread.current[:_apartment_connection_specification_name] = nil
     end
 
     def extract_tenant_config
